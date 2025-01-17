@@ -17,7 +17,7 @@ fn main() {
     if input.starts_with("exit 0"){
         break;
     }else if input.starts_with("echo"){
-        let value=input.split_off(4);
+        let value=input.split_off(5);
         print!("{value}");
     }else {
         println!("{}: command not found",input.trim());

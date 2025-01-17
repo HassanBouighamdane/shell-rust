@@ -13,13 +13,16 @@ fn main() {
     let stdin = io::stdin();
     let mut input = String::new();
     stdin.read_line(&mut input).unwrap();
-    
+
     if input.starts_with("exit 0"){
         break;
-    };
-    println!("{}: command not found",input.trim());
+    }else if input.starts_with("echo"){
+        let value=input.split_off(4);
+        print!("{value}");
+    }else {
+        println!("{}: command not found",input.trim());
+    }
 
-    
     }
    
     

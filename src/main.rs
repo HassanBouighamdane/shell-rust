@@ -1,11 +1,24 @@
 #[allow(unused_imports)]
 use std::io::{self, Write};
+use std::path::PathBuf;
 use std::vec;
 use std::env;
+use std::process::Command;
+
+fn find_exec(name:&str)-> Option<PathBuf>{
+    if let Ok(paths) = env::var("PATH") {
+        for path in env::split_paths(&paths) {
+            let exe_path = path.join(name);
+            if exe_path.is_file() {
+                return Some(exe_path);
+            }
+        }
+    }
+    None
+}
 
 fn main() {
     
-
     loop {
      print!("$ ");
      io::stdout().flush().unwrap();
@@ -17,6 +30,7 @@ fn main() {
     stdin.read_line(&mut input).unwrap();
 
     let args=input.split_whitespace().collect::<Vec<&str>>();
+    
     if args.is_empty(){
         continue;
     } 
@@ -56,20 +70,30 @@ fn main() {
                     let splited_path=&mut path.split(":");
                     if let Some(path) =
                     splited_path.find(|path| std::fs::metadata(format!("{}/{}", path, cmd)).is_ok())
-                {
+                    {
                     println!("{cmd} is {path}/{cmd}");
-                } else {
+                    } else {
                     println!("{cmd} not found");
-                }
+                    }
                 }
            }
+
            else{
             println!("the type arguments are not valid");
            }
         },
         
         _=>{
-            println!("{}: command not found",args[0]);
+            let exec=args[0];
+            if let Some(path)=find_exec(exec){
+                Command::new(path)
+                .args(&args[1..])
+                .status()
+                .expect("failed to execute the program");
+            }
+            else{
+                println!("{}: command not found",args[0]);
+            }
         }
     }
 

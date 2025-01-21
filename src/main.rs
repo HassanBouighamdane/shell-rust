@@ -86,7 +86,7 @@ fn main() {
         _=>{
             let exec=args[0];
             if let Some(path)=find_exec(exec){
-                Command::new(path)
+                Command::new(exec)
                 .args(&args[1..])
                 .status()
                 .expect("failed to execute the program");
@@ -96,6 +96,5 @@ fn main() {
             }
         }
     }
-
     }
 }

@@ -85,7 +85,7 @@ fn main() {
         
         _=>{
             let exec=args[0];
-            if let Some(path)=find_exec(exec){
+            if find_exec(exec)!=None{
                 Command::new(exec)
                 .args(&args[1..])
                 .status()

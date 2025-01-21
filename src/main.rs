@@ -1,11 +1,12 @@
 #[allow(unused_imports)]
 use std::io::{self, Write};
 use std::vec;
+use std::env;
 
 fn main() {
-    let shell_commands=vec!["echo", "exit","type"];
+    
+
     loop {
-        // Uncomment this block to pass the first stage
      print!("$ ");
      io::stdout().flush().unwrap();
 
@@ -15,31 +16,60 @@ fn main() {
     let mut input = String::new();
     stdin.read_line(&mut input).unwrap();
 
-/* version 1
-    if input.starts_with("exit 0"){
-        break;
-    }else if input.starts_with("echo"){
-        let value=input.split_off(5);
-        print!("{value}");
-    }else {
-        println!("{}: command not found",input.trim());
-    }
-    */
-    // Optimized version with match
-    match input.trim(){
-        "exit 0"=> break,
-        input if input.starts_with("echo ")=>{
-            println!("{}",&input[5..]);
+    let args=input.split_whitespace().collect::<Vec<&str>>();
+    if args.is_empty(){
+        continue;
+    } 
+
+    let shell_commands=vec!["echo", "exit","type"];
+    let path=env::var("PATH").unwrap();
+
+    match args[0]{
+
+        // The exit command
+        "exit"=> {
+            if args.len()==2{
+                match args[1]{
+                    "0"=> break,
+                    _=>{
+                        println!("{} is not a valid exit argument",args[1]);
+                    }
+                }
+            }else{
+                println!("exit needs a valid argument");
+            }
         }
-        input if input.starts_with("type ")=>{
-           if shell_commands.contains(&&input[5..]){
-            println!("{} is a shell builtin",&input[5..]);
-           }else {
-            println!("{}: not found",&input[5..]);
-        }
-        }
-        &_=>{
-            println!("{}: command not found",input.trim());
+
+        //The echo command
+         "echo"=>{
+            print!("{}",&input[5..]);
+        },
+
+        //The type command
+        "type"=>{
+           if args.len()==2{
+            let cmd=args[1];
+                if shell_commands.contains(&cmd){
+                    println!("{} is a shell builtin",cmd);
+                }
+                else{
+                    let splited_path=&mut path.split(":");
+                    if let Some(path) =
+                    splited_path.find(|path| std::fs::metadata(format!("{}/{}", path, cmd)).is_ok())
+                {
+                    println!("{cmd} is {path}/{cmd}");
+                } else {
+                    println!("{cmd} not found");
+                }
+                }
+           }
+           else{
+            println!("the type arguments are not valid");
+           }
+        },
+        
+        _=>{
+            println!("{}: command not found",args[0]);
         }
     }
 

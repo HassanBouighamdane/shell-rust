@@ -35,7 +35,7 @@ fn main() {
         continue;
     } 
 
-    let shell_commands=vec!["echo", "exit","type"];
+    let shell_commands=vec!["echo", "exit","type","pwd"];
     let path=env::var("PATH").unwrap();
 
     match args[0]{

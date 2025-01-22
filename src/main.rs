@@ -17,6 +17,8 @@ fn find_exec(name:&str)-> Option<PathBuf>{
     None
 }
 
+
+
 fn main() {
     
     loop {
@@ -35,7 +37,7 @@ fn main() {
         continue;
     } 
 
-    let shell_commands=vec!["echo", "exit","type","pwd"];
+    let shell_commands=vec!["echo", "exit","type","pwd","cd"];
     let path=env::var("PATH").unwrap();
 
     match args[0]{
@@ -94,6 +96,20 @@ fn main() {
                 // println!("{}",dir.to_str().unwrap());
                 
             }
+        }
+
+        "cd"=>{
+            if args.len()==2{
+                let directory=args[1];
+                let cd=env::set_current_dir(directory);
+                if cd.is_err(){
+                    println!("cd: {directory}: No such file or directory")
+                }
+            }
+            else{
+                println!("cd expected 1 argument found {}",args.len()-1);
+            }
+           
         }
         
         _=>{

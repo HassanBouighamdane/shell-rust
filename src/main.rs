@@ -82,6 +82,19 @@ fn main() {
             println!("the type arguments are not valid");
            }
         },
+
+        "pwd"=>{
+            if args.len()>1{
+                println!("The pwd command has 0 argument but {} found", args.len()-1);
+            }
+            else{
+                let dir=env::current_dir().unwrap();
+                println!("{}",dir.display());
+                //the following can also be used
+                // println!("{}",dir.to_str().unwrap());
+                
+            }
+        }
         
         _=>{
             let exec=args[0];

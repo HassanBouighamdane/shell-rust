@@ -1,6 +1,9 @@
 #[allow(unused_imports)]
 use std::io::{self, Write};
-use std::path::PathBuf;
+use std::path::{
+    self,Path,PathBuf
+};
+
 use std::vec;
 use std::env;
 use std::process::Command;
@@ -100,17 +103,26 @@ fn main() {
 
         "cd"=>{
             if args.len()==2{
-                let directory=args[1];
-                let cd=env::set_current_dir(directory);
-                if cd.is_err(){
-                    println!("cd: {directory}: No such file or directory")
+                let path=args[1].to_string();
+                let path = if path.is_empty() {
+                    env::var("HOME").unwrap()
+                } else {
+                    if path.starts_with(path::MAIN_SEPARATOR) {
+                        path
+                    } else {
+                        format!("{}/{}", env::current_dir().unwrap().display(), path)
+                    }
+                };
+                let path = Path::new(&path);
+                if path.exists() && path.is_dir() {
+                    env::set_current_dir(path).unwrap();
+                } else {
+                    eprintln!("cd: {}: No such file or directory", path.display());
                 }
-            }
-            else{
-                println!("cd expected 1 argument found {}",args.len()-1);
-            }
-           
+        } else{
+            println!("cd expected 1 argument found {}",args.len()-1);
         }
+    }
         
         _=>{
             let exec=args[0];

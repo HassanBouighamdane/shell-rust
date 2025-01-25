@@ -108,16 +108,22 @@ fn main() {
                     String::new()
                 };
                 
-                
-                let path = if path.is_empty() || (path.starts_with("~") && path.len()==1) {
-                    env::var("HOME").unwrap()
+                //this part is used to get the home directory based on the os (linux or windows)
+                 let home_dir = if cfg!(windows) {
+                    env::var("USERPROFILE").unwrap()
                 } else {
-                    if path.starts_with(path::MAIN_SEPARATOR) {
-                        path
-                    } else {
-                        format!("{}/{}", env::current_dir().unwrap().display(), path)
-                    }
+                    env::var("HOME").unwrap()
                 };
+
+                let path = if path.is_empty() || (path == "~") {
+                    home_dir
+                } else if path.starts_with(path::MAIN_SEPARATOR) {
+                    path
+                } else {
+                    format!("{}/{}", env::current_dir().unwrap().display(), path)
+                };
+
+
                 let path = Path::new(&path);
                 if path.exists() && path.is_dir() {
                     env::set_current_dir(path).unwrap();

@@ -102,9 +102,14 @@ fn main() {
         }
 
         "cd"=>{
-            if args.len()==2{
-                let path=args[1].to_string();
-                let path = if path.is_empty() {
+                let path=if args.len()==2{
+                    args[1].to_string()
+                }else{
+                    String::new()
+                };
+                
+                
+                let path = if path.is_empty() || (path.starts_with("~") && path.len()==1) {
                     env::var("HOME").unwrap()
                 } else {
                     if path.starts_with(path::MAIN_SEPARATOR) {
@@ -119,10 +124,8 @@ fn main() {
                 } else {
                     eprintln!("cd: {}: No such file or directory", path.display());
                 }
-        } else{
-            println!("cd expected 1 argument found {}",args.len()-1);
-        }
-    }
+        } 
+    
         
         _=>{
             let exec=args[0];

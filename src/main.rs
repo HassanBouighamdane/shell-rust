@@ -8,18 +8,6 @@ use std::vec;
 use std::env;
 use std::process::Command;
 
-fn find_exec(name:&str)-> Option<PathBuf>{
-    if let Ok(paths) = env::var("PATH") {
-        for path in env::split_paths(&paths) {
-            let exe_path = path.join(name);
-            if exe_path.is_file() {
-                return Some(exe_path);
-            }
-        }
-    }
-    None
-}
-
 
 
 fn main() {
@@ -33,8 +21,10 @@ fn main() {
     let stdin = io::stdin();
     let mut input = String::new();
     stdin.read_line(&mut input).unwrap();
+    
+    input =input.trim().to_string();
 
-    let args=input.split_whitespace().collect::<Vec<&str>>();
+    let args=parse_input(&input);
     
     if args.is_empty(){
         continue;
@@ -43,31 +33,27 @@ fn main() {
     let shell_commands=vec!["echo", "exit","type","pwd","cd"];
     let path=env::var("PATH").unwrap();
 
-    match args[0]{
+    match args[0].as_str(){
 
         // The exit command
         "exit"=> {
-            if args.len()==2{
-                match args[1]{
-                    "0"=> break,
-                    _=>{
-                        println!("{} is not a valid exit argument",args[1]);
-                    }
-                }
-            }else{
-                println!("exit needs a valid argument");
+            
+            if args.len() == 2 && args[1] == "0" {
+                break;
+            } else {
+                println!("exit requires a valid argument");
             }
         }
 
         //The echo command
          "echo"=>{
-            print!("{}",&input[5..]);
+            println!("{}",args[1..].join(" "));
         },
 
         //The type command
         "type"=>{
            if args.len()==2{
-            let cmd=args[1];
+            let cmd=args[1].as_str();
                 if shell_commands.contains(&cmd){
                     println!("{} is a shell builtin",cmd);
                 }
@@ -134,7 +120,7 @@ fn main() {
     
         
         _=>{
-            let exec=args[0];
+            let exec=args[0].as_str();
             if find_exec(exec)!=None{
                 Command::new(exec)
                 .args(&args[1..])
@@ -147,4 +133,56 @@ fn main() {
         }
     }
     }
+}
+
+
+fn find_exec(name:&str)-> Option<PathBuf>{
+    if let Ok(paths) = env::var("PATH") {
+        for path in env::split_paths(&paths) {
+            let exe_path = path.join(name);
+            if exe_path.is_file() {
+                return Some(exe_path);
+            }
+        }
+    }
+    None
+}
+
+
+// Function to parse input and handle single quotes
+fn parse_input(input: &str) -> Vec<String> {
+    let mut args = Vec::new();
+    let mut current = String::new();
+    let mut in_single_quotes = false;
+
+    for c in input.chars() {
+        match c {
+            '\'' if in_single_quotes => {
+                // End of single-quoted segment
+                in_single_quotes = false;
+            }
+            '\'' if !in_single_quotes => {
+                // Start of single-quoted segment
+                in_single_quotes = true;
+            }
+            ' ' | '\t' if !in_single_quotes => {
+                // Space or tab outside quotes ends the current argument
+                if !current.is_empty() {
+                    args.push(current.clone());
+                    current.clear();
+                }
+            }
+            _ => {
+                // Append character to current argument
+                current.push(c);
+            }
+        }
+    }
+
+    // Add the last argument if there’s any
+    if !current.is_empty() {
+        args.push(current);
+    }
+
+    args
 }

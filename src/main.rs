@@ -21,7 +21,7 @@ fn main() {
     let stdin = io::stdin();
     let mut input = String::new();
     stdin.read_line(&mut input).unwrap();
-    
+
     input =input.trim().to_string();
 
     let args=parse_input(&input);
@@ -149,40 +149,103 @@ fn find_exec(name:&str)-> Option<PathBuf>{
 }
 
 
-// Function to parse input and handle single quotes
+// Function to parse input with support for single and double quotes
 fn parse_input(input: &str) -> Vec<String> {
     let mut args = Vec::new();
     let mut current = String::new();
     let mut in_single_quotes = false;
+    let mut in_double_quotes = false;
+    let mut escape_next = false;
 
     for c in input.chars() {
-        match c {
-            '\'' if in_single_quotes => {
-                // End of single-quoted segment
-                in_single_quotes = false;
-            }
-            '\'' if !in_single_quotes => {
-                // Start of single-quoted segment
-                in_single_quotes = true;
-            }
-            ' ' | '\t' if !in_single_quotes => {
-                // Space or tab outside quotes ends the current argument
-                if !current.is_empty() {
-                    args.push(current.clone());
-                    current.clear();
+        if escape_next {
+            // Handle escaped characters in double quotes
+            match c {
+                '$' | '`' | '"' | '\\' => current.push(c),
+                '\n' => {} // Ignore escaped newline
+                _ => {
+                    current.push('\\');
+                    current.push(c);
                 }
             }
-            _ => {
-                // Append character to current argument
-                current.push(c);
+            escape_next = false;
+        } else {
+            match c {
+                '\\' if in_double_quotes => escape_next = true,
+                '"' if !in_single_quotes => {
+                    in_double_quotes = !in_double_quotes;
+                    if !in_double_quotes {
+                        // End of double quotes: expand variables and backticks
+                        current = expand_variables_and_backticks(&current);
+                    }
+                }
+                '\'' if !in_double_quotes => {
+                    in_single_quotes = !in_single_quotes;
+                }
+                ' ' | '\t' if !in_single_quotes && !in_double_quotes => {
+                    if !current.is_empty() {
+                        args.push(current.clone());
+                        current.clear();
+                    }
+                }
+                _ => current.push(c),
             }
         }
     }
 
-    // Add the last argument if there’s any
     if !current.is_empty() {
+        if in_double_quotes {
+            current = expand_variables_and_backticks(&current);
+        }
         args.push(current);
     }
 
     args
+}
+
+// Function to expand variables (e.g., $VAR -> value) and handle backticks
+fn expand_variables_and_backticks(input: &str) -> String {
+    let mut result = String::new();
+    let mut chars = input.chars().peekable();
+    while let Some(c) = chars.next() {
+        match c {
+            '$' => {
+                let mut var_name = String::new();
+                while let Some(&next) = chars.peek() {
+                    if next.is_alphanumeric() || next == '_' {
+                        var_name.push(next);
+                        chars.next();
+                    } else {
+                        break;
+                    }
+                }
+                if let Ok(value) = env::var(&var_name) {
+                    result.push_str(&value);
+                }
+            }
+            '`' => {
+                let mut command = String::new();
+                while let Some(&next) = chars.peek() {
+                    if next == '`' {
+                        chars.next(); // Consume closing backtick
+                        break;
+                    } else {
+                        command.push(next);
+                        chars.next();
+                    }
+                }
+                if let Ok(output) = Command::new("sh")
+                    .arg("-c")
+                    .arg(command)
+                    .output()
+                {
+                    if let Ok(output_str) = String::from_utf8(output.stdout) {
+                        result.push_str(output_str.trim());
+                    }
+                }
+            }
+            _ => result.push(c),
+        }
+    }
+    result
 }

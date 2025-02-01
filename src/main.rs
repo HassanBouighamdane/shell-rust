@@ -180,7 +180,7 @@ fn parse_input(input: &str) -> Vec<String> {
                         current = expand_variables_and_backticks(&current);
                     }
                 }
-                '\'' if !in_double_quotes => {
+                '\''  => {
                     in_single_quotes = !in_single_quotes;
                 }
                 ' ' | '\t' if !in_single_quotes && !in_double_quotes => {

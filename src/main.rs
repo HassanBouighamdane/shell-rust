@@ -161,31 +161,17 @@ fn parse_input(input: &str) -> Vec<String> {
     let mut chars=input.chars();
     while let Some(c)=chars.next(){
         if escape_next {
-            // Handle escaped characters in double quotes
-            match c {
-                '$' | '`' | '"' | '\\' => current.push(c),
-                '\n' => {} // Ignore escaped newline
-                _ => {
-                    current.push('\\');
-                    current.push(c);
-                }
-            }
+           
+            current.push(c);
             escape_next = false;
         } else {
             match c {
-                '\\'  if !in_single_quotes=> {
-                    if let Some(ch) = chars.next() {
-                        if ch == '\n' {
-                            continue;
-                        }
-                        current.push(ch);
-                    } else {
-                        current.push('\\');
-                    }
+                '\\' if !in_single_quotes => {
+                    // Escape the next character outside of single quotes
+                    escape_next = true;
                 }
-                '\\' if in_double_quotes  => escape_next = true,
                 
-                '"' if !in_single_quotes && !escape_next => {
+                '"' if !in_single_quotes => {
                     in_double_quotes = !in_double_quotes;
                     if !in_double_quotes {
                         // End of double quotes: expand variables and backticks

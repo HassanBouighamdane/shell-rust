@@ -183,6 +183,7 @@ fn parse_input(input: &str) -> Vec<String> {
                         current.push('\\');
                     }
                 }
+                '\\' if in_double_quotes  => escape_next = true,
                 
                 '"' if !in_single_quotes => {
                     in_double_quotes = !in_double_quotes;

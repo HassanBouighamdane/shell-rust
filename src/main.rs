@@ -150,7 +150,6 @@ fn find_exec(name:&str)-> Option<PathBuf>{
 }
 
 
-// Function to parse input with support for single and double quotes
 fn parse_input(input: &str) -> Vec<String> {
     let mut args = Vec::new();
     let mut current = String::new();
@@ -160,9 +159,11 @@ fn parse_input(input: &str) -> Vec<String> {
 
     for c in input.chars() {
         if escape_next {
+            // Handle escaped characters outside of single quotes
             if !in_single_quotes {
                 current.push(c);
             } else {
+                // Inside single quotes, backslashes are literals
                 current.push('\\');
                 current.push(c);
             }
@@ -170,9 +171,9 @@ fn parse_input(input: &str) -> Vec<String> {
         } else {
             match c {
                 '\\' if !in_single_quotes => {
+                    // Escape the next character outside of single quotes
                     escape_next = true;
                 }
-                
                 '"' if !in_single_quotes => {
                     in_double_quotes = !in_double_quotes;
                     if !in_double_quotes {
@@ -180,10 +181,10 @@ fn parse_input(input: &str) -> Vec<String> {
                         current = expand_variables_and_backticks(&current);
                     }
                 }
-                '\''  => {
+                '\'' => {
                     in_single_quotes = !in_single_quotes;
                 }
-                ' ' | '\t' if !in_single_quotes && !in_double_quotes => {
+                ' ' | '\t' if !in_single_quotes && !in_double_quotes && !escape_next => {
                     if !current.is_empty() {
                         args.push(current.clone());
                         current.clear();
@@ -203,7 +204,6 @@ fn parse_input(input: &str) -> Vec<String> {
 
     args
 }
-
 // Function to expand variables (e.g., $VAR -> value) and handle backticks
 fn expand_variables_and_backticks(input: &str) -> String {
     let mut result = String::new();

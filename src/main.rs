@@ -158,7 +158,8 @@ fn parse_input(input: &str) -> Vec<String> {
     let mut in_double_quotes = false;
     let mut escape_next = false;
 
-    for c in input.chars() {
+    let mut chars=input.chars();
+    while let Some(c)=chars.next(){
         if escape_next {
             // Handle escaped characters in double quotes
             match c {
@@ -173,7 +174,14 @@ fn parse_input(input: &str) -> Vec<String> {
         } else {
             match c {
                 '\\' if !in_double_quotes => {
-                    continue;
+                    if let Some(ch) = chars.next() {
+                        if ch == '\n' {
+                            continue;
+                        }
+                        current.push(ch);
+                    } else {
+                        current.push('\\');
+                    }
                 }
                 '\\' if in_double_quotes => escape_next = true,
                 

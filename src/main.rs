@@ -158,16 +158,18 @@ fn parse_input(input: &str) -> Vec<String> {
     let mut in_double_quotes = false;
     let mut escape_next = false;
 
-    let mut chars=input.chars();
-    while let Some(c)=chars.next(){
+    for c in input.chars() {
         if escape_next {
-           
-            current.push(c);
+            if !in_single_quotes {
+                current.push(c);
+            } else {
+                current.push('\\');
+                current.push(c);
+            }
             escape_next = false;
         } else {
             match c {
                 '\\' if !in_single_quotes => {
-                    // Escape the next character outside of single quotes
                     escape_next = true;
                 }
                 

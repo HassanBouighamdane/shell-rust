@@ -173,7 +173,7 @@ fn parse_input(input: &str) -> Vec<String> {
             escape_next = false;
         } else {
             match c {
-                '\\'  if !in_single_quotes=> {
+                '\\'  if !in_double_quotes && in_single_quotes=> {
                     if let Some(ch) = chars.next() {
                         if ch == '\n' {
                             continue;

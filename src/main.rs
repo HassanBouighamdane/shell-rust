@@ -73,7 +73,7 @@ fn main() {
             println!("the type arguments are not valid");
            }
         },
-
+        // The pwd command
         "pwd"=>{
             if args.len()>1{
                 println!("The pwd command has 0 argument but {} found", args.len()-1);
@@ -87,6 +87,7 @@ fn main() {
             }
         }
 
+        //the cd command
         "cd"=>{
                 let path=if args.len()==2{
                     args[1].to_string()
@@ -171,7 +172,11 @@ fn parse_input(input: &str) -> Vec<String> {
             escape_next = false;
         } else {
             match c {
+                '\\' if !in_double_quotes => {
+                    continue;
+                }
                 '\\' if in_double_quotes => escape_next = true,
+                
                 '"' if !in_single_quotes => {
                     in_double_quotes = !in_double_quotes;
                     if !in_double_quotes {

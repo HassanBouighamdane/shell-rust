@@ -1,252 +1,156 @@
+use std::path::{Path, PathBuf};
+use std::process::exit;
+use std::process::Command;
+use std::{env, fs};
 #[allow(unused_imports)]
 use std::io::{self, Write};
-use std::path::{
-    self,Path,PathBuf
-};
-
-use std::vec;
-use std::env;
-use std::process::Command;
-
-
-
 fn main() {
-    
-    loop {
-     print!("$ ");
-     io::stdout().flush().unwrap();
-
-
-    // Wait for user input
     let stdin = io::stdin();
     let mut input = String::new();
-    stdin.read_line(&mut input).unwrap();
-
-    input =input.trim().to_string();
-
-    let args=parse_input(&input);
-    
-    if args.is_empty(){
-        continue;
-    } 
-
-    let shell_commands=vec!["echo", "exit","type","pwd","cd"];
-    let path=env::var("PATH").unwrap();
-
-    match args[0].as_str(){
-
-        // The exit command
-        "exit"=> {
-            
-            if args.len() == 2 && args[1] == "0" {
-                break;
-            } else {
-                println!("exit requires a valid argument");
-            }
-        }
-
-        //The echo command
-         "echo"=>{
-            println!("{}",args[1..].join(" "));
-        },
-
-        //The type command
-        "type"=>{
-           if args.len()==2{
-            let cmd=args[1].as_str();
-                if shell_commands.contains(&cmd){
-                    println!("{} is a shell builtin",cmd);
+    print!("$ ");
+    io::stdout().flush().unwrap();
+    while stdin.read_line(&mut input).is_ok() {
+        let input_string = input.strip_suffix('\n').unwrap();
+        if let Some(command) = parse_input(input_string) {
+            match command {
+                ShellCommand::EXIT(val) => exit(val),
+                ShellCommand::ECHO(argument) => {
+                    println!("{}", argument);
                 }
-                else{
-                    let splited_path=&mut path.split(":");
-                    if let Some(path) =
-                    splited_path.find(|path| std::fs::metadata(format!("{}/{}", path, cmd)).is_ok())
+                ShellCommand::TYPE(argument) => match type_of_command(&argument) {
+                    CommandType::Builtin => {
+                        println!("{} is a shell builtin", argument);
+                    }
+                    CommandType::Program(path) => {
+                        println!("{} is {}", argument, path.to_str().unwrap());
+                    }
+                    CommandType::Nonexistent => {
+                        println!("{}: not found", argument);
+                    }
+                },
+                ShellCommand::PWD() => {
+                    println!("{}", std::env::current_dir().unwrap().to_str().unwrap())
+                }
+                ShellCommand::CD(argument) => {
+                    let home = std::env::var("HOME").unwrap();
+                    if std::env::set_current_dir(Path::new(&argument.replace("~", &home))).is_err()
                     {
-                    println!("{cmd} is {path}/{cmd}");
-                    } else {
-                    println!("{cmd} not found");
+                        println!("cd: {}: No such file or directory", argument);
                     }
                 }
-           }
-
-           else{
-            println!("the type arguments are not valid");
-           }
-        },
-        // The pwd command
-        "pwd"=>{
-            if args.len()>1{
-                println!("The pwd command has 0 argument but {} found", args.len()-1);
-            }
-            else{
-                let dir=env::current_dir().unwrap();
-                println!("{}",dir.display());
-                //the following can also be used
-                // println!("{}",dir.to_str().unwrap());
-                
-            }
-        }
-
-        //the cd command
-        "cd"=>{
-                let path=if args.len()==2{
-                    args[1].to_string()
-                }else{
-                    String::new()
-                };
-                
-                //this part is used to get the home directory based on the os (linux or windows)
-                 let home_dir = if cfg!(windows) {
-                    env::var("USERPROFILE").unwrap()
-                } else {
-                    env::var("HOME").unwrap()
-                };
-
-                let path = if path.is_empty() || (path == "~") {
-                    home_dir
-                } else if path.starts_with(path::MAIN_SEPARATOR) {
-                    path
-                } else {
-                    format!("{}/{}", env::current_dir().unwrap().display(), path)
-                };
-
-
-                let path = Path::new(&path);
-                if path.exists() && path.is_dir() {
-                    env::set_current_dir(path).unwrap();
-                } else {
-                    eprintln!("cd: {}: No such file or directory", path.display());
+                ShellCommand::Program((command, arguments)) => {
+                    let command_type = type_of_command(command);
+                    let args = parse_arguments(&arguments);
+                    match command_type {
+                        CommandType::Nonexistent => {
+                            println!("{}: command not found", input_string);
+                        }
+                        CommandType::Program(path) => {
+                            let output = Command::new(path)
+                                .args(args)
+                                .output()
+                                .expect("fail to run program");
+                            print!("{}", String::from_utf8_lossy(&output.stdout))
+                        }
+                        CommandType::Builtin => {}
+                    };
                 }
-        } 
-    
-        
-        _=>{
-            let exec=args[0].as_str();
-            if find_exec(exec)!=None{
-                Command::new(exec)
-                .args(&args[1..])
-                .status()
-                .expect("failed to execute the program");
             }
-            else{
-                println!("{}: command not found",args[0]);
-            }
+        } else {
+            println!("{}: command not found", input_string);
         }
-    }
+        input.clear();
+        print!("$ ");
+        io::stdout().flush().unwrap();
     }
 }
-
-
-fn find_exec(name:&str)-> Option<PathBuf>{
-    if let Ok(paths) = env::var("PATH") {
-        for path in env::split_paths(&paths) {
-            let exe_path = path.join(name);
-            if exe_path.is_file() {
-                return Some(exe_path);
-            }
-        }
-    }
-    None
+#[derive(Debug, Clone)]
+pub enum ShellCommand<'a> {
+    EXIT(i32),
+    ECHO(String),
+    CD(String),
+    TYPE(String),
+    PWD(),
+    Program((&'a str, String)),
 }
-
-
-fn parse_input(input: &str) -> Vec<String> {
+fn parse_arguments(arguments: &str) -> Vec<String> {
     let mut args = Vec::new();
-    let mut current = String::new();
+    let mut current_arg = String::new();
     let mut in_single_quotes = false;
     let mut in_double_quotes = false;
-    let mut escape_next = false;
-
-    let mut chars = input.chars().peekable();
-    while let Some(c) = chars.next() {
-        if in_single_quotes {
-            match c {
-                '\'' => in_single_quotes = false, // Closing single quote
-                _ => current.push(c),             // Treat everything literally inside single quotes
-            }
-        } else if in_double_quotes {
-            match c {
-                '\\' => {
-                    if let Some(&next_char) = chars.peek() {
-                        current.push(next_char);
-                        chars.next();
-                    }
+    let mut escaped = false;
+    for c in arguments.chars() {
+        match c {
+            '"' if !in_single_quotes && !escaped => in_double_quotes = !in_double_quotes,
+            '\'' if !in_double_quotes && !escaped => in_single_quotes = !in_single_quotes,
+            ' ' if !in_single_quotes && !in_double_quotes && !escaped => {
+                if !current_arg.is_empty() {
+                    args.push(current_arg.clone());
+                    current_arg.clear();
                 }
-                '"' => in_double_quotes = false, // Closing double quote
-                _ => current.push(c),
             }
-        } else if escape_next {
-            current.push(c);
-            escape_next = false;
-        } else {
-            match c {
-                '\\' => escape_next = true,      // Escape character outside single quotes
-                '"' => in_double_quotes = true,   // Opening double quote
-                '\'' => in_single_quotes = true,  // Opening single quote
-                ' ' | '\t' => {
-                    if !current.is_empty() {
-                        args.push(current.clone());
-                        current.clear();
-                    }
-                }
-                _ => current.push(c),
+            '\\' if !in_single_quotes && !in_double_quotes && !escaped => escaped = true,
+            _ => {
+                escaped = false;
+                current_arg.push(c)
             }
         }
     }
-
-    if !current.is_empty() {
-        args.push(current);
+    if !current_arg.is_empty() {
+        args.push(current_arg);
     }
-
     args
 }
-
-
-// Function to expand variables (e.g., $VAR -> value) and handle backticks
-/* 
-fn expand_variables_and_backticks(input: &str) -> String {
-    let mut result = String::new();
-    let mut chars = input.chars().peekable();
-    while let Some(c) = chars.next() {
-        match c {
-            '$' => {
-                let mut var_name = String::new();
-                while let Some(&next) = chars.peek() {
-                    if next.is_alphanumeric() || next == '_' {
-                        var_name.push(next);
-                        chars.next();
-                    } else {
-                        break;
+fn parse_input(input: &str) -> Option<ShellCommand> {
+    let (command, arguments) = match input.find(' ') {
+        Some(_index) => input.split_once(' ')?,
+        None => (input, ""),
+    };
+    let parsed_args = parse_arguments(arguments).join(" ");
+    match command {
+        "exit" => Some(ShellCommand::EXIT(parsed_args.parse::<i32>().unwrap())),
+        "echo" => Some(ShellCommand::ECHO(parsed_args)),
+        "type" => Some(ShellCommand::TYPE(parsed_args)),
+        "pwd" => Some(ShellCommand::PWD()),
+        "cd" => Some(ShellCommand::CD(parsed_args)),
+        _default => Some(ShellCommand::Program((command, arguments.to_string()))),
+    }
+}
+#[derive(Debug, Clone)]
+pub enum CommandType {
+    Builtin,
+    Nonexistent,
+    Program(PathBuf),
+}
+fn type_of_command(command: &str) -> CommandType {
+    match command {
+        "echo" => CommandType::Builtin,
+        "exit" => CommandType::Builtin,
+        "type" => CommandType::Builtin,
+        "pwd" => CommandType::Builtin,
+        "cd" => CommandType::Builtin,
+        _default => {
+            if let Ok(path) = env::var("PATH") {
+                let paths: Vec<&str> = path.split(':').collect();
+                for path in paths.iter() {
+                    let folder = match fs::read_dir(path) {
+                        Ok(fold) => fold,
+                        Err(_err) => continue,
+                    };
+                    for item in folder.into_iter() {
+                        if item.as_ref().unwrap().file_name() == command {
+                            return CommandType::Program(item.unwrap().path());
+                        }
                     }
                 }
-                if let Ok(value) = env::var(&var_name) {
-                    result.push_str(&value);
+                let full_path = Path::new(command);
+                if full_path.exists() {
+                    return CommandType::Program(full_path.to_path_buf());
                 }
+                CommandType::Nonexistent
+            } else {
+                CommandType::Nonexistent
             }
-            '`' => {
-                let mut command = String::new();
-                while let Some(&next) = chars.peek() {
-                    if next == '`' {
-                        chars.next(); // Consume closing backtick
-                        break;
-                    } else {
-                        command.push(next);
-                        chars.next();
-                    }
-                }
-                if let Ok(output) = Command::new("sh")
-                    .arg("-c")
-                    .arg(command)
-                    .output()
-                {
-                    if let Ok(output_str) = String::from_utf8(output.stdout) {
-                        result.push_str(output_str.trim());
-                    }
-                }
-            }
-            _ => result.push(c),
         }
     }
-    result
 }
-    */

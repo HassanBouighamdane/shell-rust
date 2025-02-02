@@ -157,34 +157,22 @@ fn parse_input(input: &str) -> Vec<String> {
     let mut in_double_quotes = false;
     let mut escape_next = false;
 
-    for c in input.chars() {
-        if escape_next {
-            // Handle escaped characters outside of single quotes
-            if !in_single_quotes {
-                current.push(c);
-            } else {
-                // Inside single quotes, backslashes are literals
-                current.push('\\');
-                current.push(c);
+    let mut chars = input.chars().peekable();
+    while let Some(c) = chars.next() {
+        if in_single_quotes {
+            match c {
+                '\'' => in_single_quotes = false, // Closing single quote
+                _ => current.push(c),             // Treat everything literally inside single quotes
             }
+        } else if escape_next {
+            current.push(c);
             escape_next = false;
         } else {
             match c {
-                '\\' if !in_single_quotes => {
-                    // Escape the next character outside of single quotes
-                    escape_next = true;
-                }
-                '"' if !in_single_quotes => {
-                    in_double_quotes = !in_double_quotes;
-                    if !in_double_quotes {
-                        // End of double quotes: expand variables and backticks
-                        current = expand_variables_and_backticks(&current);
-                    }
-                }
-                '\'' => {
-                    in_single_quotes = !in_single_quotes;
-                }
-                ' ' | '\t' if !in_single_quotes && !in_double_quotes && !escape_next => {
+                '\\' => escape_next = true,      // Escape character outside single quotes
+                '"' => in_double_quotes = !in_double_quotes,
+                '\'' => in_single_quotes = true, // Opening single quote
+                ' ' | '\t' if !in_double_quotes => {
                     if !current.is_empty() {
                         args.push(current.clone());
                         current.clear();
@@ -196,14 +184,12 @@ fn parse_input(input: &str) -> Vec<String> {
     }
 
     if !current.is_empty() {
-        if in_double_quotes {
-            current = expand_variables_and_backticks(&current);
-        }
         args.push(current);
     }
 
     args
 }
+
 // Function to expand variables (e.g., $VAR -> value) and handle backticks
 fn expand_variables_and_backticks(input: &str) -> String {
     let mut result = String::new();

@@ -164,15 +164,26 @@ fn parse_input(input: &str) -> Vec<String> {
                 '\'' => in_single_quotes = false, // Closing single quote
                 _ => current.push(c),             // Treat everything literally inside single quotes
             }
+        } else if in_double_quotes {
+            match c {
+                '\\' => {
+                    if let Some(&next_char) = chars.peek() {
+                        current.push(next_char);
+                        chars.next();
+                    }
+                }
+                '"' => in_double_quotes = false, // Closing double quote
+                _ => current.push(c),
+            }
         } else if escape_next {
             current.push(c);
             escape_next = false;
         } else {
             match c {
                 '\\' => escape_next = true,      // Escape character outside single quotes
-                '"' => in_double_quotes = !in_double_quotes,
-                '\'' => in_single_quotes = true, // Opening single quote
-                ' ' | '\t' if !in_double_quotes => {
+                '"' => in_double_quotes = true,   // Opening double quote
+                '\'' => in_single_quotes = true,  // Opening single quote
+                ' ' | '\t' => {
                     if !current.is_empty() {
                         args.push(current.clone());
                         current.clear();
@@ -189,7 +200,10 @@ fn parse_input(input: &str) -> Vec<String> {
 
     args
 }
+
+
 // Function to expand variables (e.g., $VAR -> value) and handle backticks
+/* 
 fn expand_variables_and_backticks(input: &str) -> String {
     let mut result = String::new();
     let mut chars = input.chars().peekable();
@@ -235,3 +249,4 @@ fn expand_variables_and_backticks(input: &str) -> String {
     }
     result
 }
+    */

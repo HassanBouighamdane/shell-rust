@@ -189,7 +189,6 @@ fn parse_input(input: &str) -> Vec<String> {
 
     args
 }
-
 // Function to expand variables (e.g., $VAR -> value) and handle backticks
 fn expand_variables_and_backticks(input: &str) -> String {
     let mut result = String::new();

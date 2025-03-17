@@ -165,9 +165,25 @@ fn parse_input(input: &str) -> Vec<String> {
         } else {
             match c {
                 '\\' => {
-                    if in_single_quotes || in_double_quotes {
+                    if in_single_quotes {
                         current.push(c);
-                    } else {
+                    } else if in_double_quotes {
+                        match chars.next(){
+                            Some('"')=>{
+                                current.push('"');
+                            }
+                            Some('&')=>{
+                                current.push('&');
+                            }
+                            Some('\\')=>{
+                                current.push('\\');
+                            }
+                            _=>{
+                               escape_next=true;
+                            }
+                        }
+                        
+                    }else {
                         escape_next = true;
                     }
                 }

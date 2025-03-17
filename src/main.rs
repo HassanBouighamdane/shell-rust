@@ -171,7 +171,6 @@ fn parse_input(input: &str) -> Vec<String> {
                         if let Some(&next_char) = chars.peek() {
                             match next_char {
                                 '\\' | '"' | '$' | '\n' => {
-                                    current.push(c);
                                     current.push(chars.next().unwrap());
                                 }
                                 _ => {

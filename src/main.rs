@@ -165,7 +165,7 @@ fn parse_input(input: &str) -> Vec<String> {
         } else {
             match c {
                 '\\' => {
-                    if in_single_quotes {
+                    if in_single_quotes || in_double_quotes {
                         current.push(c);
                     } else {
                         escape_next = true;
@@ -174,7 +174,7 @@ fn parse_input(input: &str) -> Vec<String> {
                 '"' if !in_single_quotes => {
                     in_double_quotes = !in_double_quotes;
                 }
-                '\'' if !in_double_quotes => {
+                '\'' if !in_double_quotes  => {
                     in_single_quotes = !in_single_quotes;
                 }
                 ' ' | '\t' if !in_single_quotes && !in_double_quotes => {
@@ -194,50 +194,3 @@ fn parse_input(input: &str) -> Vec<String> {
 
     args
 }
-// Function to expand variables (e.g., $VAR -> value) and handle backticks
-fn expand_variables_and_backticks(input: &str) -> String {
-    let mut result = String::new();
-    let mut chars = input.chars().peekable();
-    while let Some(c) = chars.next() {
-        match c {
-            '$' => {
-                let mut var_name = String::new();
-                while let Some(&next) = chars.peek() {
-                    if next.is_alphanumeric() || next == '_' {
-                        var_name.push(next);
-                        chars.next();
-                    } else {
-                        break;
-                    }
-                }
-                if let Ok(value) = env::var(&var_name) {
-                    result.push_str(&value);
-                }
-            }
-            '`' => {
-                let mut command = String::new();
-                while let Some(&next) = chars.peek() {
-                    if next == '`' {
-                        chars.next(); // Consume closing backtick
-                        break;
-                    } else {
-                        command.push(next);
-                        chars.next();
-                    }
-                }
-                if let Ok(output) = Command::new("sh")
-                    .arg("-c")
-                    .arg(command)
-                    .output()
-                {
-                    if let Ok(output_str) = String::from_utf8(output.stdout) {
-                        result.push_str(output_str.trim());
-                    }
-                }
-            }
-            _ => result.push(c),
-        }
-    }
-    result
-}
-

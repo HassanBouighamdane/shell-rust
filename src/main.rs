@@ -168,19 +168,18 @@ fn parse_input(input: &str) -> Vec<String> {
                     if in_single_quotes {
                         current.push(c);
                     } else if in_double_quotes {
-                        match chars.next(){
-                            Some('"')=>{
-                                current.push('"');
+                        if let Some(&next_char) = chars.peek() {
+                            match next_char {
+                                '\\' | '"' | '$' | '\n' => {
+                                    current.push(c);
+                                    current.push(chars.next().unwrap());
+                                }
+                                _ => {
+                                    current.push(c);
+                                }
                             }
-                            Some('&')=>{
-                                current.push('&');
-                            }
-                            Some('\\')=>{
-                                current.push('\\');
-                            }
-                            _=>{
-                               escape_next=true;
-                            }
+                        } else {
+                            current.push(c);
                         }
                         
                     }else {
